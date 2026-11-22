@@ -120,10 +120,12 @@ compose.desktop {
 tasks.register("slimDesktopDistribution") {
     group = "distribution"
     description = "Strip native symbols and drop non-Linux ONNX runtimes from the packaged app."
-    dependsOn("packageAppImage")
+    dependsOn("packageReleaseAppImage")
     notCompatibleWithConfigurationCache("Post-processes build outputs in place")
     doLast {
-        val appRoot = layout.buildDirectory.dir("compose/binaries/main/app/TETUKO").get().asFile
+        val releaseDir = layout.buildDirectory.dir("compose/binaries/main-release/app/TETUKO").get().asFile
+        val mainDir = layout.buildDirectory.dir("compose/binaries/main/app/TETUKO").get().asFile
+        val appRoot = if (releaseDir.exists()) releaseDir else mainDir
         val appLib = File(appRoot, "lib/app")
         val onnx = appLib.listFiles()?.firstOrNull {
             it.name.startsWith("onnxruntime-") && it.name.endsWith(".jar")
@@ -193,9 +195,11 @@ tasks.register("packageComposeAppImage") {
     notCompatibleWithConfigurationCache("Downloads and executes appimagetool at execution time")
     doLast {
         val appName = "TETUKO"
-        val appDirSource = layout.buildDirectory.dir("compose/binaries/main/app/TETUKO").get().asFile
+        val releaseDir = layout.buildDirectory.dir("compose/binaries/main-release/app/TETUKO").get().asFile
+        val mainDir = layout.buildDirectory.dir("compose/binaries/main/app/TETUKO").get().asFile
+        val appDirSource = if (releaseDir.exists()) releaseDir else mainDir
         if (!appDirSource.resolve("bin/TETUKO").exists()) {
-            throw GradleException("Compose app-image not found at ${appDirSource}. Run :desktopApp:packageAppImage first.")
+            throw GradleException("Compose app-image not found at ${appDirSource}. Run :desktopApp:packageReleaseAppImage first.")
         }
         val tmpDir = layout.buildDirectory.dir("tmp").get().asFile
         val appimagetool = tmpDir.resolve("appimagetool-x86_64.AppImage")
