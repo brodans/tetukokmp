@@ -177,7 +177,13 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${{ steps.app.outputs.version }}"
-          APP_DIR=$(find desktopApp/build/compose/binaries/main/app -mindepth 1 -maxdepth 1 -type d 2>/dev/null | head -n1)
+          APP_DIR=""
+          for base in desktopApp/build/compose/binaries/main-release/app desktopApp/build/compose/binaries/main/app; do
+            if [ -d "$base" ]; then
+              APP_DIR=$(find "$base" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | head -n1)
+              [ -n "$APP_DIR" ] && break
+            fi
+          done
           if [ -z "$APP_DIR" ]; then
             echo "::error::Compose Desktop app directory tidak ditemukan"
             find desktopApp/build/compose/binaries -maxdepth 4 -type d || true
@@ -197,6 +203,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
+          find desktopApp/build/compose/binaries/main-release -name "*.AppImage" -type f -exec cp -v {} dist/ \; || true
           find desktopApp/build/compose/binaries/main -name "*.AppImage" -type f -exec cp -v {} dist/ \; || true
           find desktopApp/build/appimage -name "*.AppImage" -type f -exec cp -v {} dist/ \; || true
           echo "--- dist/ ---"; ls -lah dist || true
