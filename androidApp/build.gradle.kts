@@ -18,6 +18,7 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(projects.composeApp)
+            implementation(projects.core.data)
             implementation(projects.core.domain)
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.exifinterface)

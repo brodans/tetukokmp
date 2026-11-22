@@ -240,7 +240,7 @@ private fun installAndroidNativeStores(context: Context) {
     }
     AppServices.productivityReminderEnabledReader = { prefs.getBoolean("productivity_reminder_enabled", true) }
     AppServices.productivityReminderEnabledWriter = { enabled -> prefs.edit().putBoolean("productivity_reminder_enabled", enabled).commit() }
-    AppServices.productivityReminderLimitReader = { prefs.getString("productivity_reminder_limit", "08:30") }
+    AppServices.productivityReminderLimitReader = { prefs.getString("productivity_reminder_limit", "08:30") ?: "08:30" }
     AppServices.productivityReminderLimitWriter = { limit -> prefs.edit().putString("productivity_reminder_limit", limit).commit() }
     AppServices.productivityReminderDaysReader = {
         prefs.getString("productivity_reminder_days", "1,2,3,4,5")
