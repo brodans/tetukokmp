@@ -26,13 +26,13 @@ object ProxyConfig {
     init { reload() }
 
     fun reload() {
-        defaultGateway = env("PRESENSI_DEFAULT_GATEWAY_URL", "JATIM_GATEWAY_URL", fallback = "")
-        defaultEpBase = env("PRESENSI_DEFAULT_EP_BASE_URL", "JATIM_EP_BASE_URL", fallback = "").trimEnd('/')
+        defaultGateway = env("PRESENSI_DEFAULT_GATEWAY_URL", "JATIM_GATEWAY_URL", fallback = "https://presensi.bkd.jatimprov.go.id/service")
+        defaultEpBase = env("PRESENSI_DEFAULT_EP_BASE_URL", "JATIM_EP_BASE_URL", fallback = "https://presensi.bkd.jatimprov.go.id").trimEnd('/')
         jatimEpBase = env("JATIM_EP_BASE_URL", "PRESENSI_DEFAULT_EP_BASE_URL", fallback = defaultEpBase).trimEnd('/')
-        madiunEpBase = env("MADIUN_EP_BASE_URL", fallback = "").trimEnd('/')
-        ponorogoApiBase = env("PRESENSI_PONOROGO_API_BASE", "PONOROGO_API_BASE", fallback = "")
-        ponorogoImgBase = env("PONOROGO_IMAGE_BASE", "PRESENSI_PONOROGO_IMAGE_BASE", fallback = "").trimEnd('/')
-        ponorogoWebBase = env("PONOROGO_EP_BASE_URL", "PONOROGO_WEB_BASE", fallback = "").trimEnd('/')
+        madiunEpBase = env("MADIUN_EP_BASE_URL", fallback = "https://presensimadiun.appdev.web.id").trimEnd('/')
+        ponorogoApiBase = env("PRESENSI_PONOROGO_API_BASE", "PONOROGO_API_BASE", fallback = "http://103.109.206.102:8089/Ponorogo-absensApi/index.php")
+        ponorogoImgBase = env("PONOROGO_IMAGE_BASE", "PRESENSI_PONOROGO_IMAGE_BASE", fallback = "http://103.109.206.102:8087").trimEnd('/')
+        ponorogoWebBase = env("PONOROGO_EP_BASE_URL", "PONOROGO_WEB_BASE", fallback = "https://presensi.ponorogo.go.id").trimEnd('/')
         val explicit = env("PRESENSI_ALLOWED_HOSTS", fallback = "")
             .split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }
         val derived = listOf(defaultGateway, defaultEpBase, jatimEpBase, madiunEpBase, ponorogoApiBase, ponorogoImgBase, ponorogoWebBase)

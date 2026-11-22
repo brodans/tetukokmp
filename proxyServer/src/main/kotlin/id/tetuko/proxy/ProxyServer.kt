@@ -498,8 +498,6 @@ private suspend fun ApplicationCall.handleEp() {
     if (query.isNotEmpty()) {
         upstreamPath += if (upstreamPath.contains("?")) "&$query" else "?$query"
     }
-    upstreamPath = upstreamPath.replace(Regex("^/p(/|$)"), "/index.php$1")
-    val upstreamUrl = epBase + upstreamPath
 
     val method = request.httpMethod.value
     val body = if (method == "GET" || method == "HEAD") null
@@ -514,7 +512,7 @@ private suspend fun ApplicationCall.handleEp() {
     forwarded["Origin"] = targetOrigin
     forwarded["Referer"] = "$targetOrigin/"
 
-    val upstream = runCatching { Upstream.send(method, upstreamUrl, forwarded, body) }
+    val upstream = runCatching { fetchEpWithFallbacks(method, epBase, upstreamPath, forwarded, body) }
         .getOrElse { error ->
             respondJsonElement(
                 502,
@@ -588,6 +586,83 @@ private fun Throwable.safeMessage(fallback: String = "upstream request failed"):
         causeMsg != null -> causeMsg
         else -> fallback
     }
+}
+
+private fun epPathCandidates(pathWithQuery: String): List<String> {
+    val qIdx = pathWithQuery.indexOf('?')
+    val rawPath = if (qIdx >= 0) pathWithQuery.substring(0, qIdx) else pathWithQuery
+    val query = if (qIdx >= 0) pathWithQuery.substring(qIdx) else ""
+    val normalized = if (rawPath.startsWith("/")) rawPath else "/$rawPath"
+    val noIndex = normalized.replace(Regex("^/index\\.php(?=/|$)"), "")
+    val basePath = noIndex.ifBlank { "/" }
+    val strippedP = basePath.replace(Regex("^/p(?=/|$)"), "")
+    val clean = strippedP.ifBlank { "/" }
+
+    val candidates = LinkedHashSet<String>()
+    fun add(path: String) {
+        val p = if (path.startsWith("/")) path else "/$path"
+        candidates.add(p + query)
+    }
+
+    // Preserve explicit /index.php/... requests, otherwise try common e-Presensi layouts.
+    when {
+        normalized.startsWith("/index.php/") || normalized == "/index.php" -> {
+            add(normalized)
+            add(clean)
+            add("/index.php$clean")
+        }
+        normalized.startsWith("/p/") || normalized == "/p" -> {
+            add("/index.php$clean")
+            add(clean)
+            add(normalized)
+        }
+        else -> {
+            add(normalized)
+            add("/index.php$normalized")
+        }
+    }
+    return candidates.toList()
+}
+
+private fun isEpRedirectToCandidate(response: UpstreamResponse, epBase: String, candidates: Set<String>): Boolean {
+    if (response.status !in 300..399) return false
+    val location = response.headers.entries.firstOrNull { it.key.equals("location", ignoreCase = true) }?.value?.firstOrNull() ?: return false
+    val resolvedPath = runCatching {
+        val uri = URI(epBase).resolve(location)
+        buildString {
+            append(uri.rawPath.ifBlank { "/" })
+            uri.rawQuery?.let { append('?').append(it) }
+        }
+    }.getOrDefault(location)
+    return resolvedPath in candidates
+}
+
+private suspend fun fetchEpWithFallbacks(
+    method: String,
+    epBase: String,
+    upstreamPath: String,
+    forwarded: Map<String, String>,
+    body: ByteArray?,
+): UpstreamResponse {
+    val candidates = epPathCandidates(upstreamPath)
+    val candidateSet = candidates.toSet()
+    var last: UpstreamResponse? = null
+    var lastError: Exception? = null
+    for ((index, candidate) in candidates.withIndex()) {
+        val response = try {
+            Upstream.send(method, epBase + candidate, forwarded, body)
+        } catch (e: Exception) {
+            lastError = e
+            continue
+        }
+        last = response
+        val hasNext = index < candidates.lastIndex
+        if (response.status == 404 && hasNext) continue
+        if (hasNext && isEpRedirectToCandidate(response, epBase, candidateSet)) continue
+        return response
+    }
+    lastError?.let { throw it }
+    return last ?: throw IllegalStateException("Tidak ada kandidat path /ep yang dapat dicoba.")
 }
 
 private fun rewriteSetCookie(cookie: String): String {

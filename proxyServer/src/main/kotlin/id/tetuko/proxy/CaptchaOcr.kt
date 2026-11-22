@@ -2,6 +2,7 @@ package id.tetuko.proxy
 
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
+import ai.onnxruntime.OrtLoggingLevel
 import ai.onnxruntime.OrtSession
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -33,7 +34,10 @@ object CaptchaOcr {
     private var engine: Engine? = null
     private val lock = Any()
 
-    fun available(): Boolean = runCatching { ensureEngine() }.isSuccess
+    fun available(): Boolean {
+        if (System.getenv("TETUKO_OCR_DISABLE_NATIVE") == "1" || System.getProperty("tetuko.ocr.native.disabled") == "1") return false
+        return runCatching { ensureEngine() }.isSuccess
+    }
 
     fun solve(imageBytes: ByteArray): OcrResult {
         val eng = ensureEngine()
@@ -77,8 +81,12 @@ object CaptchaOcr {
                 }
                 if (0 !in this) add(0)
             }.toIntArray()
-            val env = OrtEnvironment.getEnvironment()
-            val opts = OrtSession.SessionOptions()
+            val env = runCatching { OrtEnvironment.getEnvironment(OrtLoggingLevel.ORT_LOGGING_LEVEL_ERROR) }
+                .getOrElse { OrtEnvironment.getEnvironment() }
+            val opts = OrtSession.SessionOptions().apply {
+                runCatching { setSessionLogLevel(OrtLoggingLevel.ORT_LOGGING_LEVEL_ERROR) }
+                runCatching { setSessionLogVerbosityLevel(0) }
+            }
             val session = env.createSession(modelBytes, opts)
             return Engine(session, charset, digitAllowed).also { engine = it }
         }

@@ -60,19 +60,24 @@ object AuthService {
                     keys.firstNotNullOfOrNull { key ->
                         (data?.get(key) as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() && it != "null" }
                     }.orEmpty()
-                val rootMessage = listOf("error", "message", "msg").firstNotNullOfOrNull { key ->
+                val rootMessage = listOf("error", "message", "msg", "pesan", "keterangan", "raw").firstNotNullOfOrNull { key ->
                     (root?.get(key) as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() && it != "null" }
                 }.orEmpty()
+                val code = listOf("code", "kode", "status_code", "errorCode", "error_code").firstNotNullOfOrNull { key ->
+                    (root?.get(key) as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() && it != "null" }
+                        ?: (data?.get(key) as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() && it != "null" }
+                }.orEmpty()
 
-                if ((hasSuccess && !success) || (!hasSuccess && rootMessage.isNotBlank())) {
-                    val msg = listOf(str("message"), str("msg"), str("error"), rootMessage)
+                if ((hasSuccess && !success) || (!hasSuccess && (rootMessage.isNotBlank() || code.isNotBlank()))) {
+                    val raw = listOf(str("message"), str("msg"), str("error"), str("pesan"), rootMessage)
                         .firstOrNull { it.isNotBlank() }
-                        ?: "Login Ponorogo gagal. Periksa NIP dan password."
+                        .orEmpty()
+                    val msg = friendlyPonorogoLoginError(raw, code)
                     return LoginOutcome(
                         ok = false,
                         nip = u,
                         message = msg,
-                        deviceBound = Regex("imei|perangkat|device|terikat|terkunci", RegexOption.IGNORE_CASE).containsMatchIn(msg),
+                        deviceBound = Regex("imei|perangkat|device|terikat|terkunci|5002", RegexOption.IGNORE_CASE).containsMatchIn("$raw $code $msg"),
                     )
                 }
 
@@ -143,5 +148,24 @@ object AuthService {
 
     fun logoutLocal() {
         AppServices.clearServerSession()
+    }
+
+    private fun friendlyPonorogoLoginError(raw: String, code: String): String {
+        val combined = "$raw $code".trim()
+        if (combined.isBlank()) return "Login Ponorogo gagal. Periksa NIP dan password."
+        val numericOnly = raw.trim().matches(Regex("\\d+"))
+        if (numericOnly || raw.trim() in setOf("5002", "5001", "5000")) {
+            return when (raw.trim()) {
+                "5002" -> "Login Ponorogo ditolak server (kode 5002). Periksa NIP/password, versi aplikasi, atau ikatan perangkat/IMEI."
+                else -> "Login Ponorogo ditolak server (kode ${raw.trim()}). Periksa NIP dan password."
+            }
+        }
+        if (code.trim() == "5002" && raw.isBlank()) {
+            return "Login Ponorogo ditolak server (kode 5002). Periksa NIP/password, versi aplikasi, atau ikatan perangkat/IMEI."
+        }
+        if (Regex("\\b5002\\b").containsMatchIn(combined)) {
+            return "$raw (kode 5002). Periksa NIP/password, versi aplikasi, atau ikatan perangkat/IMEI."
+        }
+        return raw
     }
 }
