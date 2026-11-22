@@ -111,7 +111,9 @@ compose.desktop {
         // desktop entry point, application/domain/data model graph, Ktor, ONNX,
         // serialization, logging, and Compose runtime internals used by reflection.
         buildTypes.release.proguard {
-            isEnabled.set(true)
+            // Disabled: ProGuard/R8 can produce VerifyError on Okio/Compose bytecode
+            // in packaged desktop runtime. Re-enable only with verified rules+tests.
+            isEnabled.set(false)
             version.set("7.6.1")
             configurationFiles.from(file("proguard-rules.pro"))
         }
