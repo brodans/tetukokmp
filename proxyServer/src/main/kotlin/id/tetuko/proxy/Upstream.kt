@@ -25,11 +25,19 @@ data class UpstreamResponse(
  * Redirects are never followed so callers can rewrite `Location` themselves.
  */
 object Upstream {
-    private val client: HttpClient = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(15))
-        .followRedirects(HttpClient.Redirect.NEVER)
-        .version(HttpClient.Version.HTTP_1_1)
-        .build()
+    private val client: HttpClient by lazy {
+        runCatching {
+            HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(15))
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .version(HttpClient.Version.HTTP_1_1)
+                .build()
+        }.getOrElse {
+            HttpClient.newBuilder()
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build()
+        }
+    }
 
     /**
      * Lenient client used only for the legacy Ponorogo log host, which serves a

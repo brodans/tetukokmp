@@ -9,3 +9,4 @@
 -keepattributes *Annotation*, InnerClasses, EnclosingMethod, Signature
 -dontwarn okhttp3.**
 -dontwarn okio.**
+-dontwarn java.lang.management.**

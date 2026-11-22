@@ -579,8 +579,16 @@ private fun encode(value: String): String = URLEncoder.encode(value, "UTF-8")
 
 private fun stripDanger(value: String): String = value.replace(Regex("[^a-zA-Z0-9 ._\\-]"), "").trim()
 
-private fun Throwable.safeMessage(fallback: String = "upstream request failed"): String =
-    message?.trim()?.takeIf { it.isNotEmpty() } ?: fallback
+private fun Throwable.safeMessage(fallback: String = "upstream request failed"): String {
+    val msg = message?.trim()?.takeIf { it.isNotEmpty() }
+    val causeMsg = cause?.message?.trim()?.takeIf { it.isNotEmpty() }
+    return when {
+        msg != null && causeMsg != null && !msg.contains(causeMsg, ignoreCase = true) -> "$msg ($causeMsg)"
+        msg != null -> msg
+        causeMsg != null -> causeMsg
+        else -> fallback
+    }
+}
 
 private fun rewriteSetCookie(cookie: String): String {
     var c = cookie
