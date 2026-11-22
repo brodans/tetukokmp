@@ -112,6 +112,7 @@ compose.desktop {
         // serialization, logging, and Compose runtime internals used by reflection.
         buildTypes.release.proguard {
             isEnabled.set(true)
+            version.set("7.6.1")
             configurationFiles.from(file("proguard-rules.pro"))
         }
     }
