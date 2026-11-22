@@ -94,6 +94,31 @@ compose.desktop {
             packageVersion = providers.gradleProperty("app.versionName").getOrElse("1.0.0")
             description = "TETUKO - Teknologi Terpadu Komprehensif"
             vendor = "TETUKO"
+            includeAllModules = false
+            modules(
+                "java.base",
+                "java.desktop",
+                "java.instrument",
+                "java.logging",
+                "java.management",
+                "java.naming",
+                "java.net.http",
+                "java.prefs",
+                "java.scripting",
+                "java.security.jgss",
+                "java.security.sasl",
+                "java.sql",
+                "java.xml",
+                "java.xml.crypto",
+                "jdk.accessibility",
+                "jdk.charsets",
+                "jdk.crypto.ec",
+                "jdk.crypto.cryptoki",
+                "jdk.localedata",
+                "jdk.net",
+                "jdk.unsupported",
+                "jdk.zipfs",
+            )
 
             linux {
                 iconFile.set(rootProject.file("app-resources/icons/icon.png"))
